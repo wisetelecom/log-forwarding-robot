@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: ""
+    hooks:
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: ""
+    hooks:
+      - id: shfmt # native (requires/installs Go to build)
+      # - id: shfmt-docker # Docker image (requires Docker to run)
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: "" # Use the sha / tag you want to point at
+    hooks:
+      - id: prettier
+        entry: prettier --write --ignore-unknown
+        types_or: [json, yaml, markdown]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: ""
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
