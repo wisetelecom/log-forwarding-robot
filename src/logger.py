@@ -36,7 +36,7 @@ logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
 
 # line 29-31 ref: https://medium.com/1mgofficial/how-to-override-uvicorn-logger-in-fastapi-using-loguru-124133cdcd4e
-for _log in ['uvicorn', 'uvicorn.error', 'uvicorn.access', 'fastapi']:
+for _log in ['uvicorn', 'uvicorn.access', 'fastapi']:
     _logger = logging.getLogger(_log)
     _logger.handlers = [InterceptHandler()]
 

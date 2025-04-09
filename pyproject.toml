@@ -1,10 +1,7 @@
 [project]
 name = "fastapi-ptb"
 version = "0.1.0"
-description = "Default template for PDM package"
-authors = [
-    {name = "Nafnix", email = "nafnix@proton.me"},
-]
+authors = []
 dependencies = [
     "fastapi>=0.110.0",
     "pydantic>=2.6.4",
@@ -18,19 +15,12 @@ requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
 
-
-[tool.pdm]
-distribution = false
-
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 dev = [
-    "pre-commit>=3.6.2",
-    "ruff>=0.3.3",
     "devtools>=0.12.2",
+    "pre-commit>=4.2.0",
+    "ruff>=0.11.4",
 ]
-
-[tool.pdm.scripts]
-lint = { composite = ["ruff check --fix src", "ruff format --check src"] }
 
 
 [tool.ruff]
