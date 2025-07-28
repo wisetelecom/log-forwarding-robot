@@ -1,18 +1,13 @@
 x-common: &common
   env_file:
-    - .env.prod
+    - .env.dev
   restart: unless-stopped
 
 services:
   fastapi-ptb:
     <<: [*common]
-    container_name: fastapi-ptb
     build:
       context: .
       dockerfile: Dockerfile
-    image: fastapi-ptb
     volumes:
       - .:/app
-    command: gunicorn -k uvicorn.workers.UvicornWorker src.main:app
-    # ports:
-    #   - 8000:80

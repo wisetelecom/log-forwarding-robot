@@ -1,25 +1,22 @@
 from pydantic import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.constants import LogLevel
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix='FASTAPI_',
-        env_file=('.env', '.env.dev'),
+        env_file=('.env', '.env.local', '.env.dev', '.env.prod'),
         env_file_encoding='utf-8',
         env_nested_delimiter='_',
         extra='ignore',
     )
 
-    # SECURITY WARNING: don't run with debug turned on in production!
-    DEBUG: bool = True
+    LOG_LEVEL: LogLevel = LogLevel.INFO
 
-    ALLOW_ORIGINS: list[str] = []
-
-    TELEGRAM_TOKEN: str
-    TELEGRAM_ADMIN_CHAT_ID: int
-
-    DOMAIN: HttpUrl
+    TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_WEBHOOK_URL: HttpUrl
 
 
 settings = Settings()  # type: ignore

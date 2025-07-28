@@ -1,31 +1,60 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body, FastAPI, Path, Query, status
+from telegram import Update
 
+from src.bot import telegram_app
 from src.config import settings
-from src.logger import logger  # noqa: F401
-from src.ptb import tgbot
-from src.router import router
+from src.logger import logger, setup_logging
+from src.schemas import WebhookData
+
+
+setup_logging()
 
 
 @asynccontextmanager
 async def lifespan(_):
-    async with tgbot:
-        await tgbot.start()
+    await telegram_app.bot.set_webhook(
+        settings.TELEGRAM_WEBHOOK_URL.encoded_string(),
+        allowed_updates=Update.ALL_TYPES,
+    )
+    async with telegram_app:
+        await telegram_app.start()
         yield
-        await tgbot.stop()
+        await telegram_app.stop()
 
 
-app = FastAPI(title='FastAPI PTB', lifespan=lifespan)
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOW_ORIGINS,
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+app = FastAPI(
+    title='FastAPI PTB',
+    lifespan=lifespan,
+    root_path='/telegram',
 )
 
-app.include_router(router)
+
+@app.post(
+    '/',
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def telegram(body=Body()) -> None:
+    """接收 Telegram Webhook 发来的数据，将其转换成机器人程序可识别的内容"""
+
+    await logger.adebug('Receive telegram data')
+    update = Update.de_json(data=body, bot=telegram_app.bot)
+    await telegram_app.update_queue.put(update)
+
+
+@app.get('/health-check', status_code=status.HTTP_204_NO_CONTENT)
+async def health_check(): ...
+
+
+@app.get(
+    '/{chat_id}/users/{user_id}',
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def push(
+    chat_id: int = Path(),
+    user_id: int = Path(),
+    value: list[str] = Query(default_factory=list),
+) -> None:
+    data = WebhookData(user_id=user_id, chat_id=chat_id, value=value)
+    await telegram_app.update_queue.put(data)

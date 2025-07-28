@@ -1,94 +1,116 @@
-import datetime
 import logging
-import sys
+import logging.config
 
-from loguru import logger
+import structlog
 
 from src.config import settings
 
 
-logger.remove()
+# 公用处理链
+shared_processors = [
+    structlog.stdlib.add_log_level,
+    structlog.stdlib.add_logger_name,
+    structlog.processors.TimeStamper(fmt='iso'),
+]
 
 
-# line 8-26 ref: https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
-class InterceptHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        level: str | int
-        try:
-            level = logger.level(record.levelname).name
-        except ValueError:
-            level = record.levelno
+def extract_environment(
+    _,
+    log_level: str,  # noqa: ARG001
+    event_dict,
+):
+    """
+    提取环境信息
+    """
+    record: logging.LogRecord = event_dict['_record']
 
-        # Find caller from where originated the logged message.
-        frame, depth = logging.currentframe(), 0
-        while frame and (
-            depth == 0 or frame.f_code.co_filename == logging.__file__
-        ):
-            frame = frame.f_back
-            depth += 1
-
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+    event_dict['thread_name'] = record.threadName
+    event_dict['process_name'] = record.processName
+    event_dict['target'] = f'{record.pathname}:{record.lineno}'
+    return event_dict
 
 
-logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+handlers = ['console']
 
 
-# line 29-31 ref: https://medium.com/1mgofficial/how-to-override-uvicorn-logger-in-fastapi-using-loguru-124133cdcd4e
-for _log in ['uvicorn', 'uvicorn.access', 'fastapi']:
-    _logger = logging.getLogger(_log)
-    _logger.handlers = [InterceptHandler()]
+CONFIG = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'root': {
+        'handlers': handlers,
+        'level': settings.LOG_LEVEL,
+    },
+    'formatters': {
+        'colored': {
+            '()': structlog.stdlib.ProcessorFormatter,
+            'foreign_pre_chain': shared_processors,
+            'processors': [
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.dev.ConsoleRenderer(colors=True),
+            ],
+        },
+    },
+    'handlers': {
+        'console': {
+            '()': 'logging.StreamHandler',
+            'formatter': 'colored',
+        },
+    },
+    'loggers': {
+        '()': {
+            'handlers': handlers,
+            'level': settings.LOG_LEVEL,
+            'propagate': True,
+        },
+        'uvicorn': {
+            'propagate': True,
+        },
+        'watchfiles': {
+            'propagate': True,
+            'level': 'ERROR',
+        },
+        'multipart.multipart': {
+            'propagate': True,
+            'level': 'ERROR',
+        },
+        'fastapi': {
+            'propagate': True,
+        },
+        'httpx': {
+            'propagate': True,
+        },
+        'httpcore': {
+            'propagate': True,
+        },
+        'telegram': {
+            'propagate': True,
+        },
+    },
+}
 
-logging.getLogger('httpx').setLevel('WARNING')
 
-LOG_FORMAT = (
-    '<level>{level: <8}</level> | '
-    '<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
-    '<cyan>{name}</cyan>:'
-    '<cyan>{function}</cyan>:'
-    '<cyan>{line}</cyan> - '
-    '<level>{message}</level>'
-)
+def setup_logging():
+    """
+    配置整个应用的日志系统
+    """
 
-logger.add(sys.stdout, format=LOG_FORMAT)
+    logging.config.dictConfig(CONFIG)
 
-
-class Rotator:
-    """指定大小和时间更新日志文件"""
-
-    def __init__(self, *, size):
-        now = datetime.datetime.now()
-
-        self._size_limit = size
-        # 每晚 0 点更新
-        self._time_limit = now.replace(hour=0, minute=0, second=0)
-        if now >= self._time_limit:
-            # The current time is already past the target time so it would
-            # rotate already. Add one day to prevent an immediate rotation.
-            self._time_limit += datetime.timedelta(days=1)
-
-    def should_rotate(self, message, file):
-        file.seek(0, 2)
-        if file.tell() + len(message) > self._size_limit:
-            return True
-
-        excess = (
-            message.record['time'].timestamp() - self._time_limit.timestamp()
-        )
-        if excess >= 0:
-            elapsed_days = datetime.timedelta(seconds=excess).days
-            self._time_limit += datetime.timedelta(days=elapsed_days + 1)
-            return True
-        return False
-
-
-if not settings.DEBUG:
-    # 20MB
-    rotator = Rotator(size=2e7)
-    logger.add(
-        './log/run.log',
-        level='INFO',
-        format=LOG_FORMAT,
-        rotation=rotator.should_rotate,
+    structlog.configure(
+        processors=[
+            *shared_processors,
+            # If some value is in bytes, decode it to a Unicode str.
+            structlog.processors.UnicodeDecoder(),
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        wrapper_class=structlog.stdlib.BoundLogger,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
     )
+
+
+def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+    return structlog.get_logger(name)
+
+
+logger = get_logger('ptb')
