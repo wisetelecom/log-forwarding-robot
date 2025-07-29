@@ -34,6 +34,7 @@ app = FastAPI(
 @app.post(
     '/',
     status_code=status.HTTP_202_ACCEPTED,
+    include_in_schema=False,
 )
 async def telegram(body=Body()) -> None:
     """接收 Telegram Webhook 发来的数据，将其转换成机器人程序可识别的内容"""
