@@ -41,9 +41,10 @@ async def webhook_data_hdlr(
     )
 
     assert isinstance(context.user_data, dict)
-    values = context.user_data.setdefault('values', [])
-    for payload in update.value:
-        values.append(payload)
+    values = update.value
+    # values = context.user_data.setdefault('values', [])
+    # for payload in update.value:
+    #     values.append(payload)
 
     combined_payloads = '</code>\n• <code>'.join(values)
     text = (
