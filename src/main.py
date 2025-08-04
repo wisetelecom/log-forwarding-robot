@@ -55,7 +55,13 @@ async def health_check(): ...
 async def push(
     chat_id: int = Path(),
     user_id: int = Path(),
+    notify: bool = Query(False),
     value: list[str] = Query(default_factory=list),
 ) -> None:
-    data = WebhookData(user_id=user_id, chat_id=chat_id, value=value)
+    data = WebhookData(
+        user_id=user_id,
+        chat_id=chat_id,
+        value=value,
+        notify=notify,
+    )
     await telegram_app.update_queue.put(data)

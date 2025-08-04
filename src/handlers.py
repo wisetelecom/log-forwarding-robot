@@ -47,10 +47,12 @@ async def webhook_data_hdlr(
     #     values.append(payload)
 
     combined_payloads = '</code>\n• <code>'.join(values)
-    text = (
-        f'用户 {chat_member.user.mention_html()} 收到如下内容 \n\n'
-        f'• <code>{combined_payloads}</code>'
+    user = (
+        chat_member.user.mention_html()
+        if update.notify
+        else chat_member.user.full_name
     )
+    text = f'用户 {user} 收到如下内容 \n\n• <code>{combined_payloads}</code>'
     await context.bot.send_message(
         chat_id=update.chat_id,
         text=text,

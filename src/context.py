@@ -16,5 +16,10 @@ class WebhookDataContext(CallbackContext[ExtBot, dict, dict, dict]):
         application: Application,
     ) -> 'WebhookDataContext':
         if isinstance(update, WebhookData):
-            return cls(application=application, user_id=update.user_id)
+            return cls(
+                application=application,
+                chat_id=update.chat_id,
+                user_id=update.user_id,
+            )
+
         return super().from_update(update, application)

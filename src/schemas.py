@@ -5,3 +5,4 @@ class WebhookData(BaseModel):
     user_id: int
     chat_id: int
     value: list[str]
+    notify: bool = False
